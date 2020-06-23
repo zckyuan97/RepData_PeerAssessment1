@@ -1,0 +1,130 @@
+---
+title: "RepData_PA1"
+author: "zcky"
+date: "6/23/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Assignment Instructions
+1.Code for reading in the dataset and/or processing the data  
+2.Histogram of the total number of steps taken each day  
+3.Mean and median number of steps taken each day  
+4.Time series plot of the average number of steps taken  
+5.The 5-minute interval that, on average, contains the maximum number of steps  
+6.Code to describe and show a strategy for imputing missing data  
+7.Histogram of the total number of steps taken each day after missing values are imputed  
+8.Panel plot comparing the average number of steps taken per 5-minute interval across weekdays and weekends  
+9.All of the R code needed to reproduce the results (numbers, plots, etc.) in the report
+
+## Step 1  
+### Code for reading in the dataset and/or processing the data  
+Unzip the data and read the csv file into a variable. Explore the data.
+```{r}
+unzip("./activity.zip")
+activityData <- read.csv("./activity.csv")
+summary(activityData)
+names(activityData)
+head(activityData)
+```
+
+## Step 2  
+### Histogram of the total number of steps taken each day  
+
+```{r}
+stepsPerDay <- aggregate(steps ~ date, activityData, sum, na.rm=TRUE)
+png("plot1.png")
+hist(stepsPerDay$steps)
+dev.off()
+hist(stepsPerDay$steps)
+meanStepsPerDay <- mean(stepsPerDay$steps)
+medianStepsPerDay <- median(stepsPerDay$steps)
+```
+
+## Step 3  
+### Mean and median number of steps taken each day
+
+```{r}
+meanStepsPerDay <- mean(stepsPerDay$steps)
+meanStepsPerDay
+medianStepsPerDay <- median(stepsPerDay$steps)
+medianStepsPerDay
+```
+
+## Step 4  
+### Time series plot of the average number of steps taken
+```{r}
+stepsPerInterval<-aggregate(steps~interval, data=activityData, mean, na.rm=TRUE)
+png("plot2.png")
+plot(steps~interval, data=stepsPerInterval, type="l")
+dev.off()
+plot(steps~interval, data=stepsPerInterval, type="l")
+```
+
+## Step 5  
+### The 5-minute interval that, on average, contains the maximum number of steps
+```{r}
+intervalWithMaxNbSteps <- stepsPerInterval[which.max(stepsPerInterval$steps),]$interval
+intervalWithMaxNbSteps
+```
+
+## Step 6  
+### Code to describe and show a strategy for imputing missing data  
+Fill in all the missing values in the dataset with the mean per interval.  
+The new data set with no missing values is contained in the variable activityDataNoNA.  
+The mean didn’t change after the replacements of NAs, the median changed about 0.1% of the original value.  
+```{r}
+totalValuesMissings <- sum(is.na(activityData$steps))
+totalValuesMissings
+
+getMeanStepsPerInterval<-function(interval){
+    stepsPerInterval[stepsPerInterval$interval==interval,]$steps
+}
+activityDataNoNA<-activityData
+
+for(i in 1:nrow(activityDataNoNA)){
+    if(is.na(activityDataNoNA[i,]$steps)){
+        activityDataNoNA[i,]$steps <- getMeanStepsPerInterval(activityDataNoNA[i,]$interval)
+    }
+}
+```
+
+## Step 7  
+### Histogram of the total number of steps taken each day after missing values are imputed
+```{r}
+totalStepsPerDayNoNA <- aggregate(steps ~ date, data=activityDataNoNA, sum)
+png("plot3.png")
+hist(totalStepsPerDayNoNA$steps)
+dev.off()
+hist(totalStepsPerDayNoNA$steps)
+meanStepsPerDayNoNA <- mean(totalStepsPerDayNoNA$steps)
+medianStepsPerDayNoNA <- median(totalStepsPerDayNoNA$steps)
+```
+
+## Step 8  
+### Panel plot comparing the average number of steps taken per 5-minute interval across weekdays and weekends
+```{r}
+activityDataNoNA$date <- as.Date(strptime(activityDataNoNA$date, format="%Y-%m-%d"))
+activityDataNoNA$day <- weekdays(activityDataNoNA$date)
+for (i in 1:nrow(activityDataNoNA)) {
+    if (activityDataNoNA[i,]$day %in% c("Saturday","Sunday")) {
+        activityDataNoNA[i,]$day<-"weekend"
+    }
+    else{
+        activityDataNoNA[i,]$day<-"weekday"
+    }
+}
+stepsByDay <- aggregate(activityDataNoNA$steps ~ activityDataNoNA$interval + activityDataNoNA$day, activityDataNoNA, mean)
+names(stepsByDay) <- c("interval", "day", "steps")
+library(lattice)
+png("plot4.png")
+xyplot(steps ~ interval | day, stepsByDay, type = "l", layout = c(1, 2), 
+    xlab = "Interval", ylab = "Number of steps")
+dev.off()
+xyplot(steps ~ interval | day, stepsByDay, type = "l", layout = c(1, 2), 
+    xlab = "Interval", ylab = "Number of steps")
+```
+
